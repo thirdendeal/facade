@@ -1,0 +1,10 @@
+optimize:
+  jpeg: cjpeg
+    -dc-scan-opt 2
+    -dct float
+    -optimize
+    -progressive
+    -quality 75
+    -trellis-dc
+    -outfile "%<output>s"
+    "%<input>s"
