@@ -1,15 +1,26 @@
 -- Smoke Test
 -- ---------------------------------------------------------------------
 
-local origin = "test/data/image.jpg"
-local target = "test/data/image-optimize.jpg"
+local path = require("path")
 
-local fh = io.open(target)
+-- ---------------------------------------------------------------------
 
-if fh then
-  fh:close()
+local input = "./test/data/input/"
+local output = "./test/data/output/"
 
-  os.remove(target)
+path.each(
+  output,
+  function(file)
+    path.remove(file)
+  end,
+  {
+    recurse = true,
+    reverse = true
+  }
+)
+
+local arguments = 'optimize "' .. input .. '" "' .. output .. '"'
+
+for _ = 1, 4 do
+  os.execute("lua ./source/facade.lua " .. arguments)
 end
-
-os.execute("lua source/facade.lua optimize " .. origin)

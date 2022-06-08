@@ -1,7 +1,10 @@
 -- Facade
 -- ---------------------------------------------------------------------
+--
+-- Usage: lua source/facade.lua <input> [directory]
 
 local mimetypes = require("mimetypes")
+local path = require("path")
 local yaml = require("yaml")
 
 -- ---------------------------------------------------------------------
@@ -19,7 +22,44 @@ local function mime(name)
 end
 
 local function prepend_ext(filename, string)
-  return filename:gsub("(%.%w*)$", string .. "%1")
+  local root, extension = path.splitext(filename)
+
+  return root .. string .. extension
+end
+
+local function build_input(input)
+  if path.isdir(input) then
+    return path.each(input)
+  else
+    return path.each(
+      input,
+      {
+        delay = true,
+        recurse = true,
+        reverse = true,
+        skipdirs = true
+      }
+    )
+  end
+end
+
+local function build_output(input, directory, command)
+  local output = path.join(directory, path.basename(input))
+
+  if path.exists(output) then
+    output = prepend_ext(output, "-" .. command)
+  end
+
+  local root, extension = path.splitext(output)
+  local index = 1
+
+  while path.exists(output) do
+    output = root .. "-" .. index .. extension
+
+    index = index + 1
+  end
+
+  return path.fullpath(output)
 end
 
 -- ---------------------------------------------------------------------
@@ -34,17 +74,22 @@ if config_fh then
 end
 
 local command = arg[1]
-local input = arg[2]
-local output = arg[3] or prepend_ext(input, "-" .. command)
+local input = build_input(arg[2])
+local directory = arg[3] or path.dirname(arg[2])
 
-if config and command and input then
-  local _, subtype = mime(input)
+directory = path.normalize(directory)
 
-  local match = config[command][subtype]
+if config and command then
+  for file in input do
+    local _, subtype = mime(file)
+    local match = config[command][subtype]
 
-  match = match:gsub("\n", " ")
-  match = match:gsub("%%<input>s", input)
-  match = match:gsub("%%<output>s", output)
+    local file_output = build_output(file, directory, command)
 
-  os.execute(match)
+    match = match:gsub("\n", " ")
+    match = match:gsub("%%<input>s", file)
+    match = match:gsub("%%<output>s", file_output)
+
+    os.execute(match)
+  end
 end
